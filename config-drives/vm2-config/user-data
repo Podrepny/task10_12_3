@@ -1,0 +1,14 @@
+#cloud-config
+#password: qwerty
+#chpasswd: { expire: False }
+ssh_authorized_keys:
+  - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC/IeMDV6AvuzljMhg6KQ+LS+R6949CacQJEGzMUWh4sKeDlhjvXda1fSDVFjvBZBwW9JoLjF8Y/Ji7bDkW8406XGoer/euojyyIGqvBMNEhZITrb1Gc7o5jet9fhsbY3A4lirSB68PPwW+EySlKchnV1nqVRUFZyfEn0C75uxLCiEDgEEy9U3x2OZIoUYcYD5xHs7zP1KfmqpDVVgsqnYRTnFePz2/ymHF6GLsvYva9zJGipnrkDXmwREO8tnONPV/RCzqwk1Mj1WaVCQpHKL6140+B8aO2hcxCZGnbWHr+QavBmEhVt0RgzgfTmon0WjJSpS8swocLIJbKfxYWwmK9U3vf4hrcrl1gqVdJtB4f8PwdQffyJhLsfaDQksoSnRbYJ5EaNXEYu+VhYbdx7MCYu1HcWfiQyD4I8AIu7cQrQmyfF00uoUSxRDeRRpErXELJLi0rJQF8mQqO9UMU+yUzrX2ts86yyfrOpFmbyaX1qGHsjoJOtuqsB41i4rvxgoC0sE/p9VrnivnUd0UzMRYKUF1O7isvKwFO/SW3fxkKS+UJYFm4KU/nvcyhkD6PEa48FG6ZuCdn/4j2K8KKfLzASyl1/8Xi6bQjAVZSdMFdfHDinjn6YY/QEdyVUPrHdacyXExQut9hX371ZBkY0ee/inG/sqZrHCGIGqPG7GVuw== alexey@ubuntu-server-16
+
+runcmd:
+ - [ sh, -c, "/sbin/ip link add vxlan0 type vxlan id 12345 remote 192.168.124.101 local 192.168.124.102 dstport 4789" ]
+ - [ sh, -c, "/sbin/ip link set vxlan0 up" ]
+ - [ sh, -c, "/sbin/ip addr add 10.255.0.102/24 dev vxlan0" ]
+ - [ sh, -c, "/usr/bin/curl -fsSL https://download.docker.com/linux/ubuntu/gpg | /usr/bin/apt-key add -" ]
+ - [ sh, -c, '/usr/bin/add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable"' ]
+ - [ sh, -c, "/usr/bin/apt-get update" ]
+ - [ sh, -c, "/usr/bin/apt-get -y install docker-ce" ]

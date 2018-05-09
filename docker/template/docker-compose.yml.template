@@ -1,0 +1,21 @@
+version: '2'
+
+services:
+    proxy:
+        image: ${NGINX_IMAGE}
+        container_name: ${DOCKER_SRV_NGINX_NAME}
+        ports:
+            - "${NGINX_PORT}:${DOCKER_SRV_NGINX_PORT}"
+        volumes:
+            - ${NGINX_CFG_FILE}:${NGINX_CFG_FILE_DOCKER}:ro
+            - ${SSL_DIR}:${SSL_DIR_DOCKER}:ro
+            - ${NGINX_LOG_DIR}:${NGINX_LOG_DIR_DOCKER}
+    web:
+        image: ${APACHE_IMAGE}
+        container_name: ${DOCKER_SRV_APACHE_NAME}
+        ports:
+            - "${DOCKER_SRV_APACHE_PORT}:${DOCKER_SRV_APACHE_PORT}"
+#networks:
+#    test-network:
+#        driver: bridge
+

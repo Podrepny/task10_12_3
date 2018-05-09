@@ -1,0 +1,6 @@
+xenial-server-cloudimg-amd64-disk1.img
+xenial-server-cloudimg-amd64-disk1.qcow2
+*.swp
+.config.swp
+.function.inc.swp
+.gitignore.swp
