@@ -12,6 +12,7 @@ CLOUDINIT_CONF_DIR_SUFIX="-config"
 VI_BR_PREFIX="virbr"
 EXT_DHCP_IP_RANGE_BEGIN="2"
 EXT_DHCP_IP_RANGE_END="254"
+EXT_VM1_MAC=52:54:00:`(date; cat /proc/interrupts) | md5sum | sed -r 's/^(.{6}).*$/\1/; s/([0-9a-f]{2})/\1:/g; s/:$//;'`
 EXT_VIBR_NAME="${VI_BR_PREFIX}${EXTERNAL_NET##*.}"
 EXT_XML_PATH="${XML_PATH}/${EXTERNAL_NET_NAME}.xml"
 INT_VIBR_NAME="${VI_BR_PREFIX}${INTERNAL_NET##*.}"
@@ -43,6 +44,7 @@ apt-get update
 apt-get -y install ssh openssh-server
 apt-get -y install qemu-kvm libvirt-bin virtinst virt-viewer bridge-utils genisoimage
 apt-get -y install mc virt-top libvirt-doc git
+apt-get -y install nfs-kernel-server nfs-common
 
 # create dir tree and files
 func_dir_tree_gen

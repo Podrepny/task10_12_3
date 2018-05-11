@@ -7,6 +7,7 @@ cat <<EOF > ${EXT_XML_PATH}
   <ip address='${EXTERNAL_NET_HOST_IP}' netmask='${EXTERNAL_NET_MASK}'>
     <dhcp>
       <range start='${EXTERNAL_NET}.${EXT_DHCP_IP_RANGE_BEGIN}' end='${EXTERNAL_NET}.${EXT_DHCP_IP_RANGE_END}'/>
+      <host mac='${EXT_VM1_MAC}' name='${VM1_NAME}' ip='${VM1_EXTERNAL_IP}'/>
     </dhcp>
   </ip>
 </network>
