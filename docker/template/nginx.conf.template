@@ -42,7 +42,7 @@ http {
         ssl_ciphers HIGH:!aNULL:!eNULL:!EXPORT:!CAMELLIA:!DES:!MD5:!PSK:!RC4;
         ssl_prefer_server_ciphers on;
 
-        access_log            ${DOCKER_SRV_NGINX_LOG_DIR}/${HOST_NAME}.access.log;
+        access_log            ${DOCKER_SRV_NGINX_LOG_DIR}/access.log;
 
         # Proxying the connections connections
         location / {
