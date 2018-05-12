@@ -58,7 +58,7 @@ apt-get update
 apt-get -y install ssh openssh-server openssl
 apt-get -y install apt-transport-https ca-certificates curl software-properties-common
 apt-get -y install qemu-kvm libvirt-bin virtinst virt-viewer bridge-utils genisoimage
-apt-get -y install mc virt-top libvirt-doc git
+apt-get -y install mc virt-top libvirt-doc git nmap
 
 ## download virtual mashine
 wget -c ${VM_BASE_IMAGE} || exit 1
@@ -100,7 +100,13 @@ func_gen_cludinit_conf_vm2 "${CLOUDINIT_CONF_DIR}/${VM2_NAME}${CLOUDINIT_CONF_DI
 func_deploy_vm ${VM1_NAME} ${VM1_HDD} ${VM1_CONFIG_ISO} ${VM1_NUM_CPU} ${VM1_MB_RAM} "--network network=${EXTERNAL_NET_NAME},model=virtio,mac=${EXT_VM1_MAC}"
 
 ## wait dhcp for vm1
-func_wait_dhcp ${MAX_TIMEOUT_FOR_VM1}
+func_wait_dhcp ${MAX_TIMEOUT_FOR_VM1} ${EXTERNAL_NET_NAME} ${EXT_VM1_MAC}
+
+## waiting for a response from the service ssh on port 22
+#func_wait_ssh ${MAX_TIMEOUT_FOR_VM1} ${VM1_EXTERNAL_IP} 22
+
+## wait authorized_keys copy to root
+func_wait_root_id_rsa ${MAX_TIMEOUT_FOR_VM1} ${SSH_PUB_KEY%.pub} ${VM1_EXTERNAL_IP}
 
 ## deploy vm1
 func_deploy_vm ${VM2_NAME} ${VM2_HDD} ${VM2_CONFIG_ISO} ${VM2_NUM_CPU} ${VM2_MB_RAM}

@@ -69,8 +69,8 @@ EOF
 ## user-data
 cat <<EOF > $1/user-data
 #cloud-config
-#password: qwerty
-#chpasswd: { expire: False }
+password: qwerty
+chpasswd: { expire: False }
 ssh_authorized_keys:
   - $(cat $SSH_PUB_KEY)
 
@@ -84,6 +84,9 @@ runcmd:
  - [ sh, -c, '/usr/bin/add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"' ]
  - [ sh, -c, "/usr/bin/apt-get update" ]
  - [ sh, -c, "/usr/bin/apt-get -y install docker-ce docker-compose bridge-utils" ]
+ - [ sh, -c, "mkdir -p /root/.ssh" ]
+ - [ sh, -c, "cat /home/ubuntu/.ssh/authorized_keys > /root/.ssh/authorized_keys" ]
+ - [ sh, -c, "chmod 600 /root/.ssh/authorized_keys" ]
 # - [ sh, -c, "/bin/mount -o ro /dev/sr0 /media" ]
 # - [ sh, -c, "/bin/mkdir -p ${VM1_NGINX_SSL_DIR} ${VM1_NGINX_CFG_DIR} ${VM1_DOCKER_COMPOSE_FILE}" ]
 # - [ sh, -c, "/bin/mkdir -p ${NGINX_LOG_DIR}" ]
@@ -97,13 +100,6 @@ runcmd:
 # - [ sh, -c, "/bin/sleep 25" ]
 # - [ sh, -c, "CNT=0; while :; do /usr/bin/docker-compose ps | /bin/grep Up > /dev/null ; if [ $? -eq \"0\" ]; then /bin/echo Yes ; if [ \"${CNT}\" -ge \"240\" ]; then /bin/echo \"TIMEOUT\" ; break; fi ; else /bin/echo NO ; break ; fi ; /bin/sleep 0.5 ; ((CNT++)) ; /bin/echo \"CNT: ${CNT}\" ; done" ]
 # - [ sh, -c, "/bin/sleep 5 ; /usr/bin/docker ps ; /bin/date" ]
-
-#!/bin/bash
-mount /dev/cdrom /mnt/
-#mkdir -p /root/.ssh
-#cat /home/ubuntu/.ssh/authorized_keys > /root/.ssh/authorized_keys
-#chmod 600 /root/.ssh/authorized_keys
-mkdir -p /srv/rrrrr
 EOF
 }
 
@@ -151,17 +147,58 @@ EOF
 }
 
 function func_wait_dhcp {
-  local WAIT_DELAY=$1
-  while [[ ${WAIT_COUNTER} -lt ${WAIT_DELAY} ]]
+  echo "start wait dhcp = $1 sec"
+  local WAIT_DELAY_DHCP="$1"
+  local WAIT_IP_DCHP="$2"
+  local WAIT_MAC_DHCP="$3"
+  while [[ ${WAIT_COUNTER_DHCP} -lt ${WAIT_DELAY_DHCP} ]]
   do
-      (( WAIT_COUNTER++ ))
-      virsh net-dhcp-leases ${EXTERNAL_NET_NAME} | grep "${EXT_VM1_MAC}"
+      (( WAIT_COUNTER_DHCP++ ))
+      virsh net-dhcp-leases ${WAIT_IP_DCHP} | grep "${WAIT_MAC_DHCP}"
       if [[ $? -eq 0 ]]; then
-          WAIT_COUNTER="${WAIT_DELAY}"
+          WAIT_COUNTER_DHCP="${WAIT_DELAY_DHCP}"
       fi
       sleep 1s
-      echo "wait DHCP for ${VM1_NAME}: ${WAIT_COUNTER} of ${WAIT_DELAY}"
+      echo "wait DHCP for ${VM1_NAME}: ${WAIT_COUNTER_DHCP} of ${WAIT_DELAY_DHCP}"
   done
+  echo "stop wait dhcp"
+}
+
+function func_wait_ssh {
+  echo "start wait for ssh ervice = $1 sec"
+  local WAIT_DELAY_SSH="$1"
+  local WAIT_IP_SSH="$2"
+  local WAIT_PORT_SSH="$3"
+  while [[ ${WAIT_COUNTER_SSH} -lt ${WAIT_DELAY_SSH} ]]
+  do
+      (( WAIT_COUNTER_SSH++ ))
+      nmap -p${WAIT_PORT_SSH} ${WAIT_IP_SSH} | grep "ssh"
+      if [[ $? -eq 0 ]]; then
+          WAIT_COUNTER_SSH="${WAIT_DELAY_SSH}"
+      fi
+      sleep 1s
+      echo "wait SSH for ${VM1_NAME}: ${WAIT_COUNTER_SSH} of ${WAIT_DELAY_SSH}"
+  done
+  echo "stop wait for ssh"
+}
+
+function func_wait_root_id_rsa {
+  echo "start wait for root id_rsa = $1 sec"
+  local WAIT_DELAY_ID_RSA="$1"
+  local WAIT_PUB_KEY_ID_RSA="$2"
+  local WAIT_IP_ID_RSA="$3"
+  local 
+  while [[ ${WAIT_COUNTER_ID_RSA} -lt ${WAIT_DELAY_ID_RSA} ]]
+  do
+      (( WAIT_COUNTER_ID_RSA++ ))
+ssh -o StrictHostKeyChecking=no -A -i ${WAIT_PUB_KEY_ID_RSA} root@${WAIT_IP_ID_RSA} "cat /root/.ssh/authorized_keys" | grep "ssh-rsa"
+      if [[ $? -eq 0 ]]; then
+          WAIT_COUNTER_ID_RSA="${WAIT_DELAY_ID_RSA}"
+      fi
+      sleep 1s
+      echo "wait AUTORIZED KEY for ${VM1_NAME}: ${WAIT_COUNTER_ID_RSA} of ${WAIT_DELAY_ID_RSA}"
+  done
+  echo "stop wait for root id_rsa"
 }
 
 function func_deploy_vm {
@@ -231,4 +268,21 @@ openssl x509 -req -in $SSL_DIR/web.csr -CA $SSL_DIR/root-ca.crt -CAkey $SSL_DIR/
 
 ## combining two certificates (nginx and root CA) to web.pem
 cat $SSL_DIR/web.crt $SSL_DIR/root-ca.crt > $SSL_DIR/web.pem
+}
+
+function func_vm1_scp {
+## ssh -o StrictHostKeyChecking=no -A -i ~alexey/.ssh/id_rsa root@192.168.125.101
+ssh -o StrictHostKeyChecking=no -A -i ~alexey/.ssh/id_rsa root@192.168.123.101 << EOF
+mkdir -p /srv/files_for_docker
+cd /srv/files_for_docker
+touch 1111122.txt
+apt-get install tree
+tree /srv > /srv/tree.txt
+EOF
+
+scp -r -i ~alexey/.ssh/id_rsa /home/alexey/task10_12_3/docker/ root@192.168.123.101:/srv/files_for_docker/
+
+ssh -o StrictHostKeyChecking=no -A -i ~alexey/.ssh/id_rsa root@192.168.123.101 << EOF
+tree /srv > /srv/tree2.txt
+EOF
 }
