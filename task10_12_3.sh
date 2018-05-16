@@ -45,6 +45,7 @@ HOST_INT_NETWORK_CFG_FILE="${HOST_NETWORK_XML_CFG_DIR}/${INTERNAL_NET_NAME}.xml"
 MGM_NETWORK_VIBR_NAME="${VI_BR_PREFIX}-${VM1_MANAGEMENT_IF}"    ## virtual managment network - name
 HOST_MGM_NETWORK_CFG_FILE="${HOST_NETWORK_XML_CFG_DIR}/${MANAGEMENT_NET_NAME}.xml"    ## managment virtual network config xml - file
 VM1_MAX_TIMEOUT="60"    ## timeout for wait vm1 start services - second
+VM2_MAX_TIMEOUT="${VM1_MAX_TIMEOUT}"    ## timeout for wait vm2 start services - second
 ## ------------------------
 ## vm1 host variable
 ## ------------------------
@@ -140,7 +141,7 @@ func_deploy_vm "${VM1_NAME}" "${VM1_HDD}" "${VM1_CONFIG_ISO}" "${VM1_NUM_CPU}" "
 ## wait dhcp for vm1
 func_wait_dhcp "${VM1_MAX_TIMEOUT}" "${EXTERNAL_NET_NAME}" "${EXT_NETWORK_VM1_MAC}" "${VM1_NAME}"
 ## waiting for a response from the service ssh on port 22
-func_wait_ssh "${VM1_MAX_TIMEOUT}" "${VM1_EXTERNAL_IP}" 22 "${VM1_NAME}"
+#func_wait_ssh "${VM1_MAX_TIMEOUT}" "${VM1_EXTERNAL_IP}" 22 "${VM1_NAME}"
 ## wait authorized_keys copy to root
 func_wait_root_id_rsa "${VM1_MAX_TIMEOUT}" "${SSH_PUB_KEY%.pub}" "${VM1_MANAGEMENT_IP}" "${VM1_NAME}"
 
@@ -155,11 +156,10 @@ func_vm_scp "${SSH_PUB_KEY%.pub}" "${VM1_MANAGEMENT_IP}" "${HOST_NGINX_CFG_FILE}
 func_vm_scp "${SSH_PUB_KEY%.pub}" "${VM1_MANAGEMENT_IP}" "${HOST_SSL_DIR}" "${VM1_HOST_CFG_AND_CERTS_DIR}"
 
 ## wait for docker install finish
-
-
+func_wait_docker "${VM1_MAX_TIMEOUT}" "${SSH_PUB_KEY%.pub}" "${VM1_MANAGEMENT_IP}" "${VM1_NAME}"
 
 ## start docker nginx
-#func_vm_ssh_cmd "${SSH_PUB_KEY%.pub}" "${VM1_MANAGEMENT_IP}" 'docker-compose -f "${VM1_HOST_DOCKER_CFG_FILE}" up -d'
+func_vm_ssh_cmd "${SSH_PUB_KEY%.pub}" "${VM1_MANAGEMENT_IP}" "docker-compose -f \"${VM1_HOST_DOCKER_CFG_FILE}\" up -d"
 
 ## ------------------------
 ## deploy vm2
@@ -170,14 +170,16 @@ func_deploy_vm "${VM2_NAME}" "${VM2_HDD}" "${VM2_CONFIG_ISO}" "${VM2_NUM_CPU}" "
 ## wait authorized_keys copy to root
 func_wait_root_id_rsa "${VM1_MAX_TIMEOUT}" "${SSH_PUB_KEY%.pub}" "${VM2_MANAGEMENT_IP}" "${VM2_NAME}"
 
-## wait for docker install finish
-
-
-
 ## make dir for docker config on vm2
 func_vm_ssh_cmd "${SSH_PUB_KEY%.pub}" "${VM2_MANAGEMENT_IP}" "mkdir -p ${VM2_HOST_DOCKER_CFG_DIR}"
 ## copy config files to vm2
 func_vm_scp "${SSH_PUB_KEY%.pub}" "${VM2_MANAGEMENT_IP}" "${HOST_VM2_DOCKER_APACHE_YML_FILE}" "${VM2_HOST_DOCKER_CFG_FILE}"
+
+## wait for docker install finish
+func_wait_docker "${VM2_MAX_TIMEOUT}" "${SSH_PUB_KEY%.pub}" "${VM2_MANAGEMENT_IP}" "${VM2_NAME}"
+
+## start docker nginx
+func_vm_ssh_cmd "${SSH_PUB_KEY%.pub}" "${VM2_MANAGEMENT_IP}" "docker-compose -f \"${VM2_HOST_DOCKER_CFG_FILE}\" up -d"
 
 # debug
 virsh list --all

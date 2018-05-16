@@ -169,12 +169,13 @@ function func_wait_dhcp {
   local WAIT_NET_NAME_DCHP="$2"
   local WAIT_MAC_DHCP="$3"
   local WAIT_HOST_NAME_DHCP="$4"
+  local WAIT_COUNTER_DHCP="0"
   while [[ ${WAIT_COUNTER_DHCP} -lt ${WAIT_DELAY_DHCP} ]]
   do
       (( WAIT_COUNTER_DHCP++ ))
       virsh net-dhcp-leases ${WAIT_NET_NAME_DCHP} | grep "${WAIT_MAC_DHCP}"
       if [[ $? -eq 0 ]]; then
-          WAIT_COUNTER_DHCP="${WAIT_DELAY_DHCP}"
+          break
       fi
       sleep 1s
       echo "wait DHCP for ${WAIT_HOST_NAME_DHCP}: ${WAIT_COUNTER_DHCP} of ${WAIT_DELAY_DHCP}"
@@ -183,7 +184,7 @@ function func_wait_dhcp {
 }
 
 function func_wait_ssh {
-  echo "start wait for ssh ervice, linit = $1 sec"
+  echo "start wait for ssh service, limit = $1 sec"
   local WAIT_DELAY_SSH="$1"
   local WAIT_IP_SSH="$2"
   local WAIT_PORT_SSH="$3"
@@ -193,7 +194,7 @@ function func_wait_ssh {
       (( WAIT_COUNTER_SSH++ ))
       nmap -p${WAIT_PORT_SSH} ${WAIT_IP_SSH} | grep "ssh"
       if [[ $? -eq 0 ]]; then
-          WAIT_COUNTER_SSH="${WAIT_DELAY_SSH}"
+          break
       fi
       sleep 1s
       echo "wait SSH for ${WAIT_HOST_NAME_SSH}: ${WAIT_COUNTER_SSH} of ${WAIT_DELAY_SSH}"
@@ -207,23 +208,38 @@ function func_wait_root_id_rsa {
   local WAIT_KEY_ID_RSA="$2"
   local WAIT_IP_ID_RSA="$3"
   local WAIT_HOST_NAME_ID_RSA="$4"
-  local 
+  local WAIT_COUNTER_ID_RSA="0" 
   while [[ ${WAIT_COUNTER_ID_RSA} -lt ${WAIT_DELAY_ID_RSA} ]]
   do
       (( WAIT_COUNTER_ID_RSA++ ))
-ssh -o StrictHostKeyChecking=no -i ${WAIT_KEY_ID_RSA} root@${WAIT_IP_ID_RSA} "cat /root/.ssh/authorized_keys" | grep "ssh-rsa"
+      ssh -o StrictHostKeyChecking=no -i ${WAIT_KEY_ID_RSA} root@${WAIT_IP_ID_RSA} "cat /root/.ssh/authorized_keys" | grep "ssh-rsa"
       if [[ $? -eq 0 ]]; then
-          WAIT_COUNTER_ID_RSA="${WAIT_DELAY_ID_RSA}"
+          break
       fi
       sleep 1s
       echo "wait AUTORIZED KEY for ${WAIT_HOST_NAME_ID_RSA}: ${WAIT_COUNTER_ID_RSA} of ${WAIT_DELAY_ID_RSA}"
   done
   echo "stop wait for root id_rsa"
-  WAIT_COUNTER_ID_RSA=0
 }
 
 function func_wait_docker {
-echo docker
+  echo "start wait for docker, limit = $1 sec"
+  local FN_DELAY_DOCKER="$1"
+  local FN_KEY_DOCKER="$2"
+  local FN_IP_DOCKER="$3"
+  local FN_HOST_NAME_DOCKER="$4"
+  local FN_COUNTER_DOCKER="0"
+  while [[ ${FN_COUNTER_DOCKER} -lt ${FN_DELAY_DOCKER} ]]
+  do
+      (( FN_COUNTER_DOCKER++ ))
+      ssh -o StrictHostKeyChecking=no -i ${FN_KEY_DOCKER} root@${FN_IP_DOCKER} "docker -v"
+      if [[ $? -eq 0 ]]; then
+          break
+      fi
+      sleep 1s
+      echo "wait DOCKER for ${FN_HOST_NAME_DOCKER}: ${FN_COUNTER_DOCKER} of ${FN_DELAY_DOCKER}"
+  done
+  echo "stop wait for docker"
 }
 
 

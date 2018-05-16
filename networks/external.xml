@@ -1,0 +1,11 @@
+<network>
+  <name>external</name>
+  <forward mode='nat'/>
+  <bridge name='virbr-ens3' stp='on' delay='0'/>
+  <ip address='192.168.123.1' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='192.168.123.2' end='192.168.123.254'/>
+      <host mac='52:54:00:75:ba:d4' name='vm1' ip='192.168.123.101'/>
+    </dhcp>
+  </ip>
+</network>
