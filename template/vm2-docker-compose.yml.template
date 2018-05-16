@@ -1,0 +1,8 @@
+version: '2'
+
+services:
+    ${HOST_VM2_DOCKER_APACHE_SRV_NAME}:
+        image: ${APACHE_IMAGE}
+        container_name: ${HOST_VM2_DOCKER_APACHE_SRV_NAME}
+        ports:
+            - "${APACHE_PORT}:${HOST_VM2_DOCKER_APACHE_SRV_INT_PORT}"

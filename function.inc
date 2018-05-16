@@ -1,13 +1,44 @@
+function func_gen_dir_tree {
+## path to host ssl - dir
+if [ ! -d "${HOST_SSL_DIR}" ]; then
+  mkdir -p "${HOST_SSL_DIR}"
+fi
+## path to nginx.conf - dir
+if [ ! -e "${HOST_NGINX_CFG_DIR}" ]; then
+  mkdir -p "${HOST_NGINX_CFG_DIR}"
+fi
+## path to vm1 cloud-init files - dir
+if [ ! -e "${HOST_CLOUDINIT_CFG_DRV_VM1_DIR}" ]; then
+  mkdir -p "${HOST_CLOUDINIT_CFG_DRV_VM1_DIR}"
+fi
+## path to vm2 cloud-init files - dir
+if [ ! -e "${HOST_CLOUDINIT_CFG_DRV_VM2_DIR}" ]; then
+  mkdir -p "${HOST_CLOUDINIT_CFG_DRV_VM2_DIR}"
+fi
+## path to network exl config files - dir
+if [ ! -e "${HOST_NETWORK_XML_CFG_DIR}" ]; then
+  mkdir -p "${HOST_NETWORK_XML_CFG_DIR}"
+fi
+## vm1 hdd path - dir
+if [ ! -e "${VM1_HDD%\/*}" ]; then
+  mkdir -p "${VM1_HDD%\/*}"
+fi
+## vm2 hdd path - dir
+if [ ! -e "${VM2_HDD%\/*}" ]; then
+  mkdir -p "${VM2_HDD%\/*}"
+fi
+}
+
 function func_gen_conf_ext {
-cat <<EOF > ${EXT_XML_PATH}
+cat <<EOF > ${HOST_EXT_NETWORK_CFG_FILE}
 <network>
   <name>${EXTERNAL_NET_NAME}</name>
   <forward mode='nat'/>
-  <bridge name='${EXT_VIBR_NAME}' stp='on' delay='0'/>
+  <bridge name='${EXT_NETWORK_VIBR_NAME}' stp='on' delay='0'/>
   <ip address='${EXTERNAL_NET_HOST_IP}' netmask='${EXTERNAL_NET_MASK}'>
     <dhcp>
-      <range start='${EXTERNAL_NET}.${EXT_DHCP_IP_RANGE_BEGIN}' end='${EXTERNAL_NET}.${EXT_DHCP_IP_RANGE_END}'/>
-      <host mac='${EXT_VM1_MAC}' name='${VM1_NAME}' ip='${VM1_EXTERNAL_IP}'/>
+      <range start='${EXTERNAL_NET}.${EXT_NETWORK_DHCP_RANGE_BEGIN_IP}' end='${EXTERNAL_NET}.${EXT_NETWORK_DHCP_RANGE_END_IP}'/>
+      <host mac='${EXT_NETWORK_VM1_MAC}' name='${VM1_NAME}' ip='${VM1_EXTERNAL_IP}'/>
     </dhcp>
   </ip>
 </network>
@@ -15,35 +46,33 @@ EOF
 }
 
 function func_gen_conf_int {
-cat <<EOF > ${INT_XML_PATH}
+cat <<EOF > ${HOST_INT_NETWORK_CFG_FILE}
 <network>
   <name>${INTERNAL_NET_NAME}</name>
-  <bridge name='${INT_VIBR_NAME}'/>
+  <bridge name='${INT_NETWORK_VIBR_NAME}'/>
 </network>
 EOF
 }
 
 function func_gen_conf_mgm {
-cat <<EOF > ${MGM_XML_PATH}
+cat <<EOF > ${HOST_MGM_NETWORK_CFG_FILE}
 <network>
   <name>${MANAGEMENT_NET_NAME}</name>
-  <bridge name='${MGM_VIBR_NAME}'/>
-  <ip address="${MANAGEMENT_HOST_IP}" netmask="${MANAGEMENT_NET_MASK}"/>
+  <bridge name='${MGM_NETWORK_VIBR_NAME}'/>
+  <ip address='${MANAGEMENT_HOST_IP}' netmask='${MANAGEMENT_NET_MASK}'/>
 </network>
 EOF
 }
 
 function func_create_net {
   ## $1=${EXTERNAL_NET_NAME}
-  ## $2=${EXT_XML_PATH}
+  ## $2=${HOST_EXT_NETWORK_CFG_FILE}
   virsh net-define $2
   virsh net-autostart $1
   virsh net-start $1
 }
 
 function func_gen_cludinit_conf_vm1 {
-  mkdir -p $1
-
 ## meta-data
 cat <<EOF > $1/meta-data
 instance-id: iid-$VM1_NAME
@@ -69,8 +98,8 @@ EOF
 ## user-data
 cat <<EOF > $1/user-data
 #cloud-config
-password: qwerty
-chpasswd: { expire: False }
+#password: qwerty
+#chpasswd: { expire: False }
 ssh_authorized_keys:
   - $(cat $SSH_PUB_KEY)
 
@@ -83,29 +112,14 @@ runcmd:
  - [ sh, -c, "/usr/bin/curl -fsSL https://download.docker.com/linux/ubuntu/gpg | /usr/bin/apt-key add -" ]
  - [ sh, -c, '/usr/bin/add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"' ]
  - [ sh, -c, "/usr/bin/apt-get update" ]
- - [ sh, -c, "/usr/bin/apt-get -y install docker-ce docker-compose bridge-utils" ]
+ - [ sh, -c, "/usr/bin/apt-get -y install docker-ce docker-compose bridge-utils tree" ]
  - [ sh, -c, "mkdir -p /root/.ssh" ]
  - [ sh, -c, "cat /home/ubuntu/.ssh/authorized_keys > /root/.ssh/authorized_keys" ]
  - [ sh, -c, "chmod 600 /root/.ssh/authorized_keys" ]
-# - [ sh, -c, "/bin/mount -o ro /dev/sr0 /media" ]
-# - [ sh, -c, "/bin/mkdir -p ${VM1_NGINX_SSL_DIR} ${VM1_NGINX_CFG_DIR} ${VM1_DOCKER_COMPOSE_FILE}" ]
-# - [ sh, -c, "/bin/mkdir -p ${NGINX_LOG_DIR}" ]
-# - [ sh, -c, "/bin/cp -fr /media/certs/* ${VM1_NGINX_SSL_DIR}" ]
-# - [ sh, -c, "/bin/cp -f /media/etc/nginx.conf ${VM1_NGINX_CFG_DIR}/" ]
-# - [ sh, -c, "/bin/cp -f /media/docker-compose.yml ${VM1_DOCKER_COMPOSE_FILE}/" ]
-# - [ sh, -c, "/bin/umount /media" ]
-# - [ sh, -c, "/bin/echo OOKK" ]
-# - [ sh, -c, "cd ${VM1_DOCKER_COMPOSE_FILE} ; /bin/pwd ; /usr/bin/docker-compose --verbose up -d" ]
-# - [ sh, -c, "/usr/bin/docker-compose --verbose up -d" ]
-# - [ sh, -c, "/bin/sleep 25" ]
-# - [ sh, -c, "CNT=0; while :; do /usr/bin/docker-compose ps | /bin/grep Up > /dev/null ; if [ $? -eq \"0\" ]; then /bin/echo Yes ; if [ \"${CNT}\" -ge \"240\" ]; then /bin/echo \"TIMEOUT\" ; break; fi ; else /bin/echo NO ; break ; fi ; /bin/sleep 0.5 ; ((CNT++)) ; /bin/echo \"CNT: ${CNT}\" ; done" ]
-# - [ sh, -c, "/bin/sleep 5 ; /usr/bin/docker ps ; /bin/date" ]
 EOF
 }
 
 function func_gen_cludinit_conf_vm2 {
-  mkdir -p $1
-
 ## meta-data
 cat <<EOF > $1/meta-data
 instance-id: iid-$VM2_NAME
@@ -142,33 +156,38 @@ runcmd:
  - [ sh, -c, "/usr/bin/curl -fsSL https://download.docker.com/linux/ubuntu/gpg | /usr/bin/apt-key add -" ]
  - [ sh, -c, '/usr/bin/add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"' ]
  - [ sh, -c, "/usr/bin/apt-get update" ]
- - [ sh, -c, "/usr/bin/apt-get -y install docker-ce" ]
+ - [ sh, -c, "/usr/bin/apt-get -y install docker-ce docker-compose bridge-utils tree" ]
+ - [ sh, -c, "mkdir -p /root/.ssh" ]
+ - [ sh, -c, "cat /home/ubuntu/.ssh/authorized_keys > /root/.ssh/authorized_keys" ]
+ - [ sh, -c, "chmod 600 /root/.ssh/authorized_keys" ]
 EOF
 }
 
 function func_wait_dhcp {
-  echo "start wait dhcp = $1 sec"
+  echo "start wait dhcp, limit = $1 sec"
   local WAIT_DELAY_DHCP="$1"
-  local WAIT_IP_DCHP="$2"
+  local WAIT_NET_NAME_DCHP="$2"
   local WAIT_MAC_DHCP="$3"
+  local WAIT_HOST_NAME_DHCP="$4"
   while [[ ${WAIT_COUNTER_DHCP} -lt ${WAIT_DELAY_DHCP} ]]
   do
       (( WAIT_COUNTER_DHCP++ ))
-      virsh net-dhcp-leases ${WAIT_IP_DCHP} | grep "${WAIT_MAC_DHCP}"
+      virsh net-dhcp-leases ${WAIT_NET_NAME_DCHP} | grep "${WAIT_MAC_DHCP}"
       if [[ $? -eq 0 ]]; then
           WAIT_COUNTER_DHCP="${WAIT_DELAY_DHCP}"
       fi
       sleep 1s
-      echo "wait DHCP for ${VM1_NAME}: ${WAIT_COUNTER_DHCP} of ${WAIT_DELAY_DHCP}"
+      echo "wait DHCP for ${WAIT_HOST_NAME_DHCP}: ${WAIT_COUNTER_DHCP} of ${WAIT_DELAY_DHCP}"
   done
   echo "stop wait dhcp"
 }
 
 function func_wait_ssh {
-  echo "start wait for ssh ervice = $1 sec"
+  echo "start wait for ssh ervice, linit = $1 sec"
   local WAIT_DELAY_SSH="$1"
   local WAIT_IP_SSH="$2"
   local WAIT_PORT_SSH="$3"
+  local WAIT_HOST_NAME_SSH="$4"
   while [[ ${WAIT_COUNTER_SSH} -lt ${WAIT_DELAY_SSH} ]]
   do
       (( WAIT_COUNTER_SSH++ ))
@@ -177,45 +196,46 @@ function func_wait_ssh {
           WAIT_COUNTER_SSH="${WAIT_DELAY_SSH}"
       fi
       sleep 1s
-      echo "wait SSH for ${VM1_NAME}: ${WAIT_COUNTER_SSH} of ${WAIT_DELAY_SSH}"
+      echo "wait SSH for ${WAIT_HOST_NAME_SSH}: ${WAIT_COUNTER_SSH} of ${WAIT_DELAY_SSH}"
   done
   echo "stop wait for ssh"
 }
 
 function func_wait_root_id_rsa {
-  echo "start wait for root id_rsa = $1 sec"
+  echo "start wait for root id_rsa, limit = $1 sec"
   local WAIT_DELAY_ID_RSA="$1"
-  local WAIT_PUB_KEY_ID_RSA="$2"
+  local WAIT_KEY_ID_RSA="$2"
   local WAIT_IP_ID_RSA="$3"
+  local WAIT_HOST_NAME_ID_RSA="$4"
   local 
   while [[ ${WAIT_COUNTER_ID_RSA} -lt ${WAIT_DELAY_ID_RSA} ]]
   do
       (( WAIT_COUNTER_ID_RSA++ ))
-ssh -o StrictHostKeyChecking=no -A -i ${WAIT_PUB_KEY_ID_RSA} root@${WAIT_IP_ID_RSA} "cat /root/.ssh/authorized_keys" | grep "ssh-rsa"
+ssh -o StrictHostKeyChecking=no -i ${WAIT_KEY_ID_RSA} root@${WAIT_IP_ID_RSA} "cat /root/.ssh/authorized_keys" | grep "ssh-rsa"
       if [[ $? -eq 0 ]]; then
           WAIT_COUNTER_ID_RSA="${WAIT_DELAY_ID_RSA}"
       fi
       sleep 1s
-      echo "wait AUTORIZED KEY for ${VM1_NAME}: ${WAIT_COUNTER_ID_RSA} of ${WAIT_DELAY_ID_RSA}"
+      echo "wait AUTORIZED KEY for ${WAIT_HOST_NAME_ID_RSA}: ${WAIT_COUNTER_ID_RSA} of ${WAIT_DELAY_ID_RSA}"
   done
   echo "stop wait for root id_rsa"
+  WAIT_COUNTER_ID_RSA=0
 }
 
+function func_wait_docker {
+echo docker
+}
+
+
 function func_deploy_vm {
-  local VM_NAME=$1
-  local VM_HDD=$2
-  local VM_HDD_DIR="${VM_HDD%\/*}"
-  local VM_CONFIG_ISO=$3
-  local VM_NUM_CPU=$4
-  local VM_MB_RAM=$5
-  local EXTERNAL_NET=$6
+  local FN_VM_NAME=$1
+  local FN_VM_HDD=$2
+  local FN_VM_CONFIG_ISO=$3
+  local FN_VM_NUM_CPU=$4
+  local FN_VM_MB_RAM=$5
+  local FN_VM_EXTERNAL_NET=$6
 
-  # Generate meta-data iso file
-  mkdir -p $VM_HDD_DIR
-
-  genisoimage -output $VM_CONFIG_ISO -volid cidata -joliet -input-charset utf-8 -rock $CLOUDINIT_CONF_DIR/$VM_NAME-config/{user-data,meta-data} $WRK_DIR_PATH/docker/
-
-  qemu-img convert -O qcow2 xenial-server-cloudimg-amd64-disk1.img $VM_HDD
+  qemu-img convert -O qcow2 xenial-server-cloudimg-amd64-disk1.img $FN_VM_HDD
 
   # Create vm
   virt-install \
@@ -225,64 +245,51 @@ function func_deploy_vm {
     --noautoconsole \
     --${VM_TYPE} \
     --virt-type ${VM_VIRT_TYPE} \
-    --ram ${VM_MB_RAM} \
-    --vcpus=${VM_NUM_CPU} \
-    --name $VM_NAME \
-    --disk path=$VM_HDD,format=qcow2,bus=virtio,cache=none \
-    --disk path=$VM_CONFIG_ISO,device=cdrom \
-    $EXTERNAL_NET \
+    --ram ${FN_VM_MB_RAM} \
+    --vcpus=${FN_VM_NUM_CPU} \
+    --name $FN_VM_NAME \
+    --disk path=$FN_VM_HDD,format=qcow2,bus=virtio,cache=none \
+    --disk path=$FN_VM_CONFIG_ISO,device=cdrom \
+    $FN_VM_EXTERNAL_NET \
     --network network=$INTERNAL_NET_NAME,model=virtio \
     --network network=$MANAGEMENT_NET_NAME,model=virtio
 }
 
-function func_dir_tree_gen {
-if [ ! -d "${SSL_DIR}" ]; then
-  mkdir -p "${SSL_DIR}"
-fi
-
-if [ ! -e "${NGINX_CFG_FILE}" ]; then
-  mkdir -p "${NGINX_CFG_DIR}"
-fi
-touch "${NGINX_CFG_FILE}"
-
-#if [ ! -d "${NGINX_LOG_DIR}" ]; then
-#  mkdir -p "${NGINX_LOG_DIR}"
-#fi
-}
-
 function func_ssl_gen {
+local FN_SSL_GEN_DIR="$1"    ## output dir
+local FN_SSL_GEN_HOST_NAME="$2"    ## host name
+local FN_SSL_GEN_IP="$3"    ## ip address
+
 ## generate root CA key
-openssl genrsa -out $SSL_DIR/root-ca.key 4096
+openssl genrsa -out ${FN_SSL_GEN_DIR}/root-ca.key 4096
 
 ## generate root CA certivicate
-openssl req -x509 -new -nodes -key $SSL_DIR/root-ca.key -sha256 -days 365 -out $SSL_DIR/root-ca.crt -subj "/C=UA/ST=Kharkov/L=Kharkov/O=Podrepny/OU=web/CN=root_cert/"
+openssl req -x509 -new -nodes -key ${FN_SSL_GEN_DIR}/root-ca.key -sha256 -days 365 -out ${FN_SSL_GEN_DIR}/root-ca.crt -subj "/C=UA/ST=Kharkov/L=Kharkov/O=Podrepny/OU=web/CN=root_cert/"
 
 ## generate nginx key
-openssl genrsa -out $SSL_DIR/web.key 2048
+openssl genrsa -out ${FN_SSL_GEN_DIR}/web.key 2048
 
 ## generate nginx certificate signing request
-openssl req -new -out $SSL_DIR/web.csr -key $SSL_DIR/web.key -subj "/C=UA/ST=Kharkov/L=Kharkov/O=Podrepny/OU=web/CN=$HOST_NAME/"
+openssl req -new -out ${FN_SSL_GEN_DIR}/web.csr -key ${FN_SSL_GEN_DIR}/web.key -subj "/C=UA/ST=Kharkov/L=Kharkov/O=Podrepny/OU=web/CN=${FN_SSL_GEN_HOST_NAME}/"
 
 ## signing a nginx CSR with a root certificate
-openssl x509 -req -in $SSL_DIR/web.csr -CA $SSL_DIR/root-ca.crt -CAkey $SSL_DIR/root-ca.key -CAcreateserial -out $SSL_DIR/web.crt -days 365 -sha256 -extfile <(echo -e "authorityKeyIdentifier=keyid,issuer\nbasicConstraints=CA:FALSE\nkeyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment\nsubjectAltName = @alt_names\n[ alt_names ]\nDNS.1 = $HOST_NAME\nIP.1 = $VM1_EXTERNAL_IP")
+openssl x509 -req -in ${FN_SSL_GEN_DIR}/web.csr -CA ${FN_SSL_GEN_DIR}/root-ca.crt -CAkey ${FN_SSL_GEN_DIR}/root-ca.key -CAcreateserial -out ${FN_SSL_GEN_DIR}/web.crt -days 365 -sha256 -extfile <(echo -e "authorityKeyIdentifier=keyid,issuer\nbasicConstraints=CA:FALSE\nkeyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment\nsubjectAltName = @alt_names\n[ alt_names ]\nDNS.1 = ${FN_SSL_GEN_HOST_NAME}\nIP.1 = ${FN_SSL_GEN_IP}")
 
 ## combining two certificates (nginx and root CA) to web.pem
-cat $SSL_DIR/web.crt $SSL_DIR/root-ca.crt > $SSL_DIR/web.pem
+cat ${FN_SSL_GEN_DIR}/web.crt ${FN_SSL_GEN_DIR}/root-ca.crt > ${FN_SSL_GEN_DIR}/web.pem
 }
 
-function func_vm1_scp {
-## ssh -o StrictHostKeyChecking=no -A -i ~alexey/.ssh/id_rsa root@192.168.125.101
-ssh -o StrictHostKeyChecking=no -A -i ~alexey/.ssh/id_rsa root@192.168.123.101 << EOF
-mkdir -p /srv/files_for_docker
-cd /srv/files_for_docker
-touch 1111122.txt
-apt-get install tree
-tree /srv > /srv/tree.txt
-EOF
+function func_vm_ssh_cmd {
+local FN_VM_SSH_KEY_ID_RSA="$1"    ## host local key id_rsa
+local FN_VM_SSH_IP="$2"            ## destanation ip
+local FN_VM_SSH_CMD="$3"           ## comand for destanation host
+ssh -o StrictHostKeyChecking=no -i "${FN_VM_SSH_KEY_ID_RSA}" "root@${FN_VM_SSH_IP}" "${FN_VM_SSH_CMD}"
+}
 
-scp -r -i ~alexey/.ssh/id_rsa /home/alexey/task10_12_3/docker/ root@192.168.123.101:/srv/files_for_docker/
-
-ssh -o StrictHostKeyChecking=no -A -i ~alexey/.ssh/id_rsa root@192.168.123.101 << EOF
-tree /srv > /srv/tree2.txt
-EOF
+function func_vm_scp {
+local FN_VM_SCP_KEY_ID_RSA="$1"   ## host local key id_rsa
+local FN_VM_SCP_IP="$2"           ## destanation ip
+local FN_VM_SCP_SOURCE="$3"       ## host local source path
+local FN_VM_SCP_DESTANATION="$4"  ## remote destanation path
+scp -o StrictHostKeyChecking=no -r -i "${FN_VM_SCP_KEY_ID_RSA}" "${FN_VM_SCP_SOURCE}" "root@${FN_VM_SCP_IP}:${FN_VM_SCP_DESTANATION}"
 }

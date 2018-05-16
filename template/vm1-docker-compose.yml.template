@@ -1,0 +1,12 @@
+version: '2'
+
+services:
+    ${HOST_VM1_DOCKER_NGINX_SRV_NAME}:
+        image: ${NGINX_IMAGE}
+        container_name: ${HOST_VM1_DOCKER_NGINX_SRV_NAME}
+        ports:
+            - "${NGINX_PORT}:${HOST_VM1_DOCKER_NGINX_SRV_INT_PORT}"
+        volumes:
+            - ${VM1_HOST_NGINX_CFG_FILE}:${VM1_DOCKER_NGINX_CFG_FILE}:ro
+            - ${VM1_HOST_NGINX_SSL_DIR}:${VM1_DOCKER_NGINX_SSL_DIR}:ro
+            - ${VM1_HOST_NGINX_LOG}:${VM1_DOCKER_NGINX_LOG_DIR}
